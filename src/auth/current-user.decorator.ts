@@ -1,9 +1,15 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import { User } from '../users/entities/user.entity';
+import { GqlContextType, GqlExecutionContext } from '@nestjs/graphql';
 
-// after validate in our `local.strategy.ts`, passport will return user in request(return in try catch block )
 const getCurrentUserByContext = (context: ExecutionContext): User => {
-  return context.switchToHttp().getResponse().user;
+  if (context.getType() === 'http') {
+    // after validate in our `local.strategy.ts`, passport will return user in response(return in try catch block)
+    return context.switchToHttp().getResponse().user;
+  } else if (context.getType<GqlContextType>() === 'graphql') {
+    // xx.user from jwt strategy
+    return GqlExecutionContext.create(context).getContext().req.user;
+  }
 };
 
 export const CurrentUser = createParamDecorator(
