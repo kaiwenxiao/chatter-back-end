@@ -5,10 +5,10 @@ import { ChatsRepository } from './chats.repository';
 
 @Injectable()
 export class ChatsService {
-  constructor(private readonly chatRepository: ChatsRepository) {}
+  constructor(private readonly chatsRepository: ChatsRepository) {}
 
   create(createChatInput: CreateChatInput, userId: string) {
-    return this.chatRepository.create({
+    return this.chatsRepository.create({
       ...createChatInput,
       userId,
       userIds: createChatInput.userIds || [],
@@ -16,11 +16,11 @@ export class ChatsService {
   }
 
   async findAll() {
-    return this.chatRepository.find({});
+    return this.chatsRepository.find({});
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} chat`;
+  async findOne(_id: string) {
+    return this.chatsRepository.findOne({ _id });
   }
 
   update(id: number, updateChatInput: UpdateChatInput) {
