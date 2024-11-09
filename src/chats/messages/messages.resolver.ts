@@ -33,20 +33,17 @@ export class MessagesResolver {
 
   // TODO
   @Subscription(() => Message, {
-    filter: (payload, variables, context) => {
+    filter: (payload, variables: MessageCreatedArgs, context) => {
       const userId = context.req.user._id;
       const message: Message = payload.messageCreated;
       return (
-        message.chatId === variables.chatId &&
+        variables.chatIds.includes(message.chatId) &&
         userId !== message.user._id.toHexString()
       );
     },
   })
-  messageCreated(
-    @Args() messageCreatedArgs: MessageCreatedArgs,
-    @CurrentUser() user: TokenPayload,
-  ) {
+  messageCreated(@Args() _messageCreatedArgs: MessageCreatedArgs) {
     // we can still access currentUser because we get user info in app.module.ts's onConnect
-    return this.messagesService.messageCreated(messageCreatedArgs);
+    return this.messagesService.messageCreated();
   }
 }
