@@ -5,13 +5,17 @@ import { UsersRepository } from './users.repository';
 import { User, UserSchema } from './entities/user.entity';
 import { DatabaseModule } from '../common/database/database.module';
 import { MongooseModule } from '@nestjs/mongoose';
+import { UsersController } from './users.controller';
+import { S3Module } from '../common/s3/s3.module';
 
 @Module({
   imports: [
+    S3Module,
     // DatabaseModule.forFeature([{ name: User.name, schema: UserSchema }]),
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
   ],
   providers: [UsersResolver, UsersService, UsersRepository],
   exports: [UsersService],
+  controllers: [UsersController],
 })
 export class UsersModule {}
