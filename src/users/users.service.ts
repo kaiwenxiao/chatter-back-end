@@ -9,6 +9,8 @@ import { UsersRepository } from './users.repository';
 import * as bcrypt from 'bcrypt';
 import { S3Service } from '../common/s3/s3.service';
 import { USERS_BUCKET, USERS_IMAGE_FILE_EXTENSION } from './users.constants';
+import { UserDocument } from './entities/user.document';
+import { User } from './entities/user.entity';
 
 @Injectable()
 export class UsersService {
@@ -19,10 +21,12 @@ export class UsersService {
 
   async create(createUserInput: CreateUserInput) {
     try {
-      return this.userRepository.create({
-        ...createUserInput,
-        password: await this.hashPassword(createUserInput.password),
-      });
+      return this.toEntity(
+        await this.userRepository.create({
+          ...createUserInput,
+          password: await this.hashPassword(createUserInput.password),
+        }),
+      );
     } catch (error) {
       // E11000 comes from mongo
       if (error.messages.includes('E11000'))
@@ -34,7 +38,7 @@ export class UsersService {
   async uploadImage(file: Buffer, userId: string) {
     await this.s3Service.upload({
       bucket: USERS_BUCKET,
-      key: `${userId}.${USERS_IMAGE_FILE_EXTENSION}`,
+      key: this.getUserImage(userId),
       file,
     });
   }
@@ -45,11 +49,13 @@ export class UsersService {
 
   // if we change the same name method with `resolver`, likes return a string here, the resolver method return type will change too
   async findAll() {
-    return this.userRepository.find({});
+    return (await this.userRepository.find({})).map((userDocument) =>
+      this.toEntity(userDocument),
+    );
   }
 
-  findOne(_id: string) {
-    return this.userRepository.findOne({ _id });
+  async findOne(_id: string) {
+    return this.toEntity(await this.userRepository.findOne({ _id }));
   }
 
   async update(_id: string, updateUserInput: UpdateUserInput) {
@@ -58,19 +64,21 @@ export class UsersService {
         updateUserInput.password,
       );
     }
-    return this.userRepository.findOneAndUpdate(
-      { _id },
-      {
-        $set: {
-          ...updateUserInput,
-          password: updateUserInput.password,
+    return this.toEntity(
+      await this.userRepository.findOneAndUpdate(
+        { _id },
+        {
+          $set: {
+            ...updateUserInput,
+            password: updateUserInput.password,
+          },
         },
-      },
+      ),
     );
   }
 
   async remove(_id: string) {
-    return this.userRepository.findOneAndDelete({ _id });
+    return this.toEntity(await this.userRepository.findOneAndDelete({ _id }));
   }
 
   async verifyUser(email: string, password: string) {
@@ -81,6 +89,22 @@ export class UsersService {
       throw new UnauthorizedException('Credentials did not valid.');
     }
 
+    return this.toEntity(user);
+  }
+
+  toEntity(userDocument: UserDocument): User {
+    const user = {
+      ...userDocument,
+      imageUrl: this.s3Service.getObjectUrl(
+        USERS_BUCKET,
+        this.getUserImage(userDocument._id.toHexString()),
+      ),
+    };
+    delete user.password;
     return user;
+  }
+
+  private getUserImage(userId: string) {
+    return `${userId}.${USERS_IMAGE_FILE_EXTENSION}`;
   }
 }
